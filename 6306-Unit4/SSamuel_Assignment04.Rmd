@@ -1,0 +1,109 @@
+---
+title: "MSDS 6306:  Doing Data Science"
+subtitle: "Live session Unit 04 assignment"
+author: "Selwyn Samuel"
+date: "June 4, 2018"
+output: 
+  html_document:
+     fig_caption: yes
+---
+
+#### **Due: 1 hour before your 5^th^ live session**
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+#### **Submission**
+**ALL (non-swirl) MATERIAL MUST BE KNITTED INTO A SINGLE, LEGIBLE, AND DOCUMENTED HTML DOCUMENT. Formatting can be basic, but it should be easily human-readable.  Unless otherwise stated, please enable {r, echo=TRUE} so your code is visible.**
+
+
+#### **Questions**
+$~$
+**1. FiveThirtyEight Data (30 points): Navigate on GitHub to https://github.com/rudeboybert/fivethirtyeight and read README.md. Seriously, it will include every command you need. Test out some commands on R.**
+
+**1A. Install the fivethirtyeight package.**
+```{r install_fivethirtyeight}
+#install.packages("fivethirtyeight") - Package already intsalled
+library(fivethirtyeight)
+```
+
+**1B. In the listing of Data sets in package 'fivethirtyeight,' assign the twentysecond data set (college_recent_grads) to an object 'df.'**
+```{r assign_dataset}
+ls(package:fivethirtyeight)[20]
+
+# college_recent_grads is the twentieth in the list
+
+df <- college_recent_grads
+```
+
+**1C. Use a more detailed list of the data sets to write out the URL in a comment to the related news story.**
+```{r dataset_details}
+#vignette("fivethirtyeight", package = "fivethirtyeight") - Command to get the URLs
+message("URL for the news: https://fivethirtyeight.com/features/the-economic-guide-to-picking-a-college-major/")
+```
+
+**1D. Using R command(s), give the dimensions and column names of this data frame.**
+```{r dataset_dimensions}
+dim(df)   # Rows Columns
+colnames(df)
+```
+$~$
+**2. Data Summary (30 points): Use your newly assigned data frame for Question 2.**
+
+**2A. Write an R command that gives you the column names of the data frame. Right after that, write one that counts the number of columns but not rows. Hint: The number should match one of your numbers in Question 1d for dimensions.**
+```{r column_details}
+colnames(df)  # Column Names
+ncol(df)      # Number of Columns
+```
+
+**2B. Generate a count of each unique major_category in the data frame. I recommend using libraries to help. I have demonstrated one briefly in live-session. To be clear, this should look like a matrix or data frame containing the major_category and the frequency it occurs in the dataset. Assign it to major_count.**
+```{r major_count_details}
+major_count <- table(df$major_category)
+major_count
+```
+
+**2C. To make things easier to read, enter par(las=2) before your plot to make the text perpendicular to the axis. Make a barplot of major_count. Make sure to label the title with something informative (check the vignette if you need), label the x and y axis, and make it any color other than grey. Assign the major_category labels to their respective bar. Flip the barplot horizontally so that bars extend to the right, not upward. All of these options can be done in a single pass of barplot(). Note: It's okay if it's wider than the preview pane.**
+```{r major_count_barplot}
+library(mosaic)
+library(colorspace)
+
+par(las=2)
+par(mar=c(5,15,4,1)+.1)
+subs_pal <- rainbow_hcl(length(major_count))
+barplot(major_count, main="Recent Grads by Majors", horiz=T, xlab="Graduates Count", col=subs_pal, border = par("fg"), las=2, xlim=c(0,30))
+title(ylab = "Majors", mgp=c(14,1,0))
+```
+
+**2D. Write the fivethirtyeight data to a csv file. Make sure that it does not have row labels.**
+```{r write_2_csv}
+write.csv(df, file = "C:/SMU/Courses/MSDS 6306 - DoingDataScience/Unit 4/Homework/fivethirtyeight.csv", row.names=FALSE)
+```
+$~$
+
+**3. Codebook (30 points):**
+
+**3A. Start a new repository on GitHub for your SMU MSDS homework. On your local device, make sure there is a directory for Homework at the minimum; you are welcome to add whatever you would like to this repo in addition to your requirements here.**
+
+GitHub repo created: SMU-MSDS-Homework
+Local Directory: C:\SMU\SMU-MSDS-Homework
+
+**3B. Create a README.md file which explains the purpose of the repository, the topics included, the sources for the material you post, and contact information in case of questions. Remember, the one in the root directory should be general. You are welcome to make short READMEs for each assignment individually in other folders.**
+README.md file updated with the purpose and contact information.
+
+**3C. In one (or more) of the nested directories, post your RMarkdown script, HTML file, and data from 'fivethirtyeight.' Make sure that in your README or elsewhere that you credit fivethirtyeight in some way.**
+
+
+
+$~$
+**4. Swirl (10 points): Complete Module 15 in the R Programming course of Swirl. Copy your code/output to a separate .txt file. It does not need to be included in your RMarkdown file. The grader has requested at minimum to show the 90%-100% progress bar for the module and what output you had for it.**
+
+**4A. Complete "15: Graphics Basics"**
+
+![Proof for swirl completion](swirl.jpg)
+
+$~$
+
+**Reminder**
+
+**To complete this assignment, please submit one RMarkdown and matching HTML file that includes questions 1-2, and a .txt file containing solely your swirl output (Question 4) at least one hour before your live session on September 27, 2017. You do not need to submit a link to your GitHub: just note where it is in your RMarkdown file. Make sure it is public!! Please submit all files at the same time; only one submission is granted.**
