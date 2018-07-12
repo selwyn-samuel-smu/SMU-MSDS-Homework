@@ -1,0 +1,190 @@
+---
+title: "MSDS 6306: Doing Data Science - Preparing Data"
+subtitle: "Live session Unit 09 assignment"
+author: "Selwyn Samuel"
+date: "July 12, 2018"
+output:
+  html_document:
+    fig_caption: yes
+  word_document: default
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(RCurl)
+library(XML)
+library(ggplot2)
+library(httr)
+library(rvest)
+library(kableExtra)
+library(tidyr)
+```
+
+#### **Due: 1 hour before your 10^th^ live session**
+$~$
+
+#### **Submission**
+**ALL MATERIAL MUST BE KNITTED INTO A SINGLE, LEGIBLE, AND DOCUMENTED HTML DOCUMENT. Use RMarkdown to create this file. Formatting can be basic, but it should be easily human-readable. Unless otherwise stated, please enable {r, echo=TRUE} so your code is visible.**
+
+**TIPS:** If you are having problems with scraping, go to the website to check if it is online. If it is, then take a look at the actual website to verify how it is structured. Feel free to use View Source to narrow down good nodes to use. You are welcome to use any R libraries for this assignment. Off the top of my head, good ones to use might be rvest, dplyr, tidyr, ggplot2, reshape2, or stringr. You don't need to include install.packages for your final code, but you need library() for each.
+$~$
+
+###Quesiton 1. Harry Potter Cast (50%)
+
+**(a) In the IMDB, there are listings of full cast members for movies. Navigate to http://www.imdb.com/title/tt1201607/fullcredits?ref_=tt_ql_1. Feel free to View Source to get a good idea of what the page looks like in code.**
+
+Naviagted to the webpage, examined the source and saved it to HarryPotter.html in the repo directory.
+$~$
+
+**(b) Scrape the page with any R package that makes things easy for you. Of particular interest is the table of the Cast in order of crediting. Please scrape this table (you might have to fish it out of several of the tables from the page) and make it a data.frame() of the Cast in your R environment.**
+
+```{r echo=TRUE}
+
+# Use rvest read_html to read the web page or local page based on the connection
+#harry.potter.movie <- read_html("https://www.imdb.com/title/tt1201607/fullcredits?ref_=tt_ql_1")
+harry.potter.movie <- read_html("C:/SMU/SMU-MSDS-Homework/6306-Unit9/HarryPotter.html")
+
+# Get the actor html nodes using the CSS Selector
+# Convert the actor nodes to text
+actors.nodes <- html_nodes(harry.potter.movie, '.itemprop span')
+actors <- html_text(actors.nodes)
+
+# Get the character html nodes using the CSS Selector
+# Convert the character nodes to text
+characters.nodes <- html_nodes(harry.potter.movie, '.character')
+characters <- html_text(characters.nodes)
+
+# Create a dataframe
+harry.potter.actors <- do.call(rbind.data.frame, Map('c', actors, characters))
+
+# print the top 10
+head(harry.potter.actors)
+```
+$~$
+
+**(c) Clean up the table**
+
+* It should not have blank observations or rows, a row that should be column names, or just '.'
+* It should have intuitive column names (ideally 2 to start - Actor and Character)
+* In the film, Mr. Warwick plays two characters, which makes his row look a little weird. Please replace his character column with just "Griphook / Professor Filius Flitwick" to make it look better. 
+* One row might result in "Rest of cast listed alphabetically" - remove this observation.
+
+```{r echo=TRUE}
+# remove the unwanted "\n"
+characters <- gsub("\n", "", characters)
+
+# remove the unwanted blanks inbetween, front and back
+characters <- gsub("\\s+"," ", characters)
+characters <- trimws(characters)
+
+harry.potter.actors <- do.call(rbind.data.frame, Map('c', actors, characters))
+
+# Set column names
+names(harry.potter.actors) <- c("Actor", "Character")
+
+# Print Mr. Warwick's Characters
+kable(subset(harry.potter.actors, grepl("^Warwick", harry.potter.actors$Actor)), row.names=FALSE)  %>%
+  kable_styling(bootstrap_options = c("striped", "condensed"), full_width = F)
+
+# print the top 10
+kable(head(harry.potter.actors, 10), row.names=FALSE)  %>%
+  kable_styling(bootstrap_options = c("striped", "condensed"), full_width = F)
+
+# print the bottom 10
+kable(tail(harry.potter.actors, 10), row.names=FALSE)  %>%
+  kable_styling(bootstrap_options = c("striped", "condensed"), full_width = F)
+
+# print summary
+summary(harry.potter.actors)
+
+```
+$~$
+
+**(d) Split the Actor's name into two columns: FirstName and Surname. Keep in mind that some actors/actresses have middle names as well. Please make sure that the middle names are in the FirstName column, in addition to the first name (example: given the
+Actor Frank Jeffrey Stevenson, the FirstName column would say "Frank Jeffrey.")**
+
+```{r echo=TRUE}
+harry.potter.actors <- harry.potter.actors %>% separate(Actor, into = c("FirstName", "Surname"), sep = '\\s(?=\\S*?$)')
+```
+$~$
+
+**(e) Present the first 10 rows of the data.frame() - It should have only FirstName, Surname, and Character columns.**
+
+```{r echo=TRUE}
+# print the top 10
+kable(head(harry.potter.actors, 10), row.names=FALSE)  %>%
+  kable_styling(bootstrap_options = c("striped", "condensed"), full_width = F)
+```
+$~$
+
+###Quesiton 2. SportsBall (50%)
+
+**(a) On the ESPN website, there are statistics of each NBA player. Navigate to the San Antonio Spurs current statistics (likely http://www.espn.com/nba/team/stats/_/name/sa/san-antonio-spurs). You are interested in the Shooting Statistics table.**
+
+Naviagted to the webpage, examined the source and saved it to SanAntonioSpurs.html in the repo directory.
+$~$
+
+**(b) Scrape the page with any R package that makes things easy for you. There are a few tables on the page, so make sure you are targeting specifically the Shooting Statistics table.**
+
+```{r echo=TRUE}
+
+# Use rvest read_html to read the web page or local page based on the connection
+#san.antonio.spurs <- read_html("http://www.espn.com/nba/team/stats/_/name/sa/san-antonio-spurs")
+san.antonio.spurs <- read_html("C:/SMU/SMU-MSDS-Homework/6306-Unit9/SanAntonioSpurs.html")
+
+# Get all the tables
+san.antonio.spurs.tables <- html_nodes(san.antonio.spurs, 'table')
+
+# There are two tables. First is the Game statistics. The second is the shooting statistics. We need the second one. 
+# We can get a data frame from html_table
+san.antonio.spurs.shooting <- html_table(san.antonio.spurs.tables[[2]])
+```
+$~$
+
+**(c) Clean up the table (You might get some warnings if you're working with tibbles)**
+
+* You'll want to create an R data.frame() with one observation for each player. Make sure that you do not accidentally include blank rows, a row of column names, or the Totals row in the table as observations.
+* The column PLAYER has two variables of interest in it: the player's name and their position, denoted by 1-2 letters after their name. Split the cells into two columns, one with Name and the other Position.
+* Check the data type of all columns. Convert relevant columns to numeric. Check the data type of all columns again to confirm that they have changed!
+
+```{r echo=TRUE}
+
+# clean the data frame 
+# 1. Remove row 1 that has SHOOTING STATISTICS for all the columns
+san.antonio.spurs.shooting <- san.antonio.spurs.shooting[-c(1),]
+
+# 2. Make Row 2 as the column names and remove that row as well
+colnames(san.antonio.spurs.shooting) <- san.antonio.spurs.shooting[c(1),]
+san.antonio.spurs.shooting <- san.antonio.spurs.shooting[-c(1),]
+
+# 3. Remove the totals row - last row
+san.antonio.spurs.shooting <- san.antonio.spurs.shooting[-c(length(san.antonio.spurs.shooting)),]
+
+# 4. Split the player column into two: Name & Position
+san.antonio.spurs.shooting <- san.antonio.spurs.shooting %>% separate(PLAYER, into = c("Name", "Position"), sep = ", ")
+
+# 5. Convert columns to Numeric
+san.antonio.spurs.shooting[, 3:length(san.antonio.spurs.shooting)] <- lapply(san.antonio.spurs.shooting[,3:length(san.antonio.spurs.shooting)], as.numeric)
+
+# 6. Print column types
+sapply(san.antonio.spurs.shooting, class)
+
+# print
+kable(san.antonio.spurs.shooting, row.names=FALSE)  %>%
+  kable_styling(bootstrap_options = c("striped", "condensed"), full_width = F)
+
+```
+$~$
+
+**(d) Create a colorful bar chart that shows the Field Goals Percentage Per Game for each person. It will be graded on the following criteria.**
+
+* Informative Title, centered
+* Relevant x and y axis labels (not simply variables names!)
+* Human-readable axes with no overlap (you might have to flip x and y to fix that). Note: You do not have to convert the decimal to a percentage.
+* Color the columns by the team member's position (so, all PF's should have the same color, etc.)
+
+```{r echo=TRUE}
+ggplot(san.antonio.spurs.shooting, aes(Name, `FG%`, fill=Position)) +  
+  geom_bar(stat="identity") + theme_classic() + coord_flip() +
+  labs(title ="Field Goals % Statistics by Player", x = "Player Name", y = "Field Goal %")
+```
