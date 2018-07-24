@@ -1,0 +1,148 @@
+---
+title: "MSDS 6306: Doing Data Science - Exploratory Data"
+subtitle: "Live session Unit 10 assignment"
+author: "Selwyn Samuel"
+date: "July 19, 2018"
+output:
+  html_document:
+    fig_caption: yes
+  word_document: default
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(RCurl)
+library(XML)
+library(ggplot2)
+library(httr)
+library(rvest)
+library(kableExtra)
+library(tidyr)
+```
+
+#### **Due: 1 hour before your 11^th^ live session**
+$~$
+
+#### **Submission**
+**ALL MATERIAL MUST BE KNITTED INTO A SINGLE, LEGIBLE, AND DOCUMENTED HTML DOCUMENT. Use RMarkdown to create this file. Formatting can be basic, but it should be easily human-readable. Unless otherwise stated, please enable {r, echo=TRUE} so your code is visible.**
+$~$
+
+**Background:** Your organization is responsible for building new VA hospitals in the mainland of the United States. You are a little overwhelmed by the prospect, not sure which places need the most help. You decide to begin by exploring healthcare facility data recorded by the U.S. Government.
+
+**Disclaimer:** While these are real data, the assignment is not an endorsement for any particular position on medical affairs or building hospitals. It is for instructional use only.
+
+###Quesiton 1. Mental Health Clinics (40%)
+
+**(a) This data set is a survey of every known healthcare facility that offers mental health services in the United States in 2015. Navigate to https://datafiles.samhsa.gov/study-dataset/national-mental-health-services-survey-2015-n-mhss-2015-ds0001-nid17098 and select the R download. Look through the codebook PDF for an explanation on certain variables. Upon opening the RDA file, the data set should be inserted into your global environment, which you can then reference.**
+
+Naviagted to the webpage and downloaded the dataset for R. Read through the codebook for the description of the variables.
+
+```{r echo=TRUE}
+# load the dataset into R
+mental.health.clinics <- get(load("C:/SMU/SMU-MSDS-Homework/6306-Unit10/N-MHSS-2015-DS0001-data/N-MHSS-2015-DS0001-data-r.rda"))
+
+# print the dimenstions of the data set
+dim(mental.health.clinics)
+```
+$~$
+
+**(b) Please create code which lists the State abbreviations without their counts, one abbreviation per State value. It does not have to in data frame format. A vector is fine.**
+
+```{r echo=TRUE}
+# Get state abbreviations
+state.abbreviations <- as.vector(trimws(unique(mental.health.clinics$LST)))
+print(state.abbreviations)
+```
+$~$
+
+**(c) Filter the data.frame from 1A. We are only interested in the Veterans Administration (VA) medical centers in the mainland United States-create a listing of counts of these centers by state, including only mainland locations. Alaska, Hawaii, and U.S. territories should be omitted. DC, while not a state, is in the mainland, so it should remain included. Convert this to data.frame()**
+
+```{r echo=TRUE}
+# Get the Veterans clinics only in mainland US
+mainland.veterans.clinics <- subset(mental.health.clinics, startsWith(as.character(FACILITYTYPE), "Veterans") & !(trimws(LST) %in% c("AK", "HI")))
+dim(mainland.veterans.clinics)
+
+# Get the count of veterans clinics by state in mainland US
+mainland.veterans.clinics$Veterans.Count <- 0
+mainland.veterans.clinics.count <- aggregate(Veterans.Count ~ LST, data=mainland.veterans.clinics, FUN=length)
+names(mainland.veterans.clinics.count) <- c("State", "Count")
+
+# Print the class for the variable. It is a data frame
+class(mainland.veterans.clinics.count)
+
+# print
+kable(mainland.veterans.clinics.count, row.names=FALSE)  %>%
+  kable_styling(bootstrap_options = c("striped", "condensed"), full_width = F)
+
+```
+$~$
+
+**(d) Create a ggplot barchart of this filtered data set. Vary the bar's colors by what State it has listed. Give it an appropriately professional title that is centered. Make sure you have informative axis labels. The State axis should be readable, not layered over each other. You're welcome to have a legend or not.**
+
+```{r echo=TRUE, fig.width=10, fig.height=6}
+# ggplot of veterans clinics by state
+ggplot(mainland.veterans.clinics.count, aes(State, Count, fill=State)) +  
+  geom_bar(stat="identity") + theme_gray() + theme(legend.position="bottom") + theme(plot.title = element_text(color="black", size=14, face="bold", hjust = 0.5), axis.title.x = element_text(color="black", size=14, face="bold"), axis.title.y = element_text(color="black", size=14, face="bold"), axis.text.x=element_text(angle=90)) + labs(title ="Veterans Clinics Count by State", x = "State", y = "Veterans Clinics Count") + guides(fill=guide_legend(nrow=4, byrow=TRUE))
+```
+$~$
+
+###Quesiton 2. Cleaning and Bringing in New Features (60%)
+
+**(a) This graph (1D) might be somewhat misleading, as bigger states may have more hospitals, but could be more sparsely located. Read statesize.csv into your R environment. This contains essentially a vector of square miles for each state. In trying to merge it with your data.frame() from 1C, you find that they don't match. Use paste() on your LST column in 1C to see what the matter is, and write what you observe in a comment.**
+
+```{r echo=TRUE}
+# Read the state size CSV file
+states.size <- read.csv("C:/SMU/SMU-MSDS-Homework/6306-Unit10/statesize.csv")
+paste(":", mainland.veterans.clinics.count$State, ":", states.size$Abbrev, ":")
+
+# The observation is that State Name and Abbreviaton contains white spaces that need to be trimmed before we can do the merge
+```
+$~$
+
+**(b) Correct the problem with the LST column using any method in R that is programmatic and easily understandable. Once you have made these state abbreviations identical to statesize.csv's Abbrev column, merge the data.frame() from 1C and statesize.csv in order to add size information.**
+
+```{r echo=TRUE}
+# Trim the white spaces in the columns
+states.size$Abbrev <- trimws(states.size$Abbrev)
+mainland.veterans.clinics.count$State <- trimws(mainland.veterans.clinics.count$State)
+
+# Merge the two dataframes
+mainland.veterans.clinics.count.new <- merge(mainland.veterans.clinics.count, states.size, by.x = c("State"), by.y = c("Abbrev"))
+head(mainland.veterans.clinics.count.new)
+```
+$~$
+
+**(c) Calculate a new variable in your combined data.frame() which indicates the VA hospitals per thousand square miles.**
+
+```{r echo=TRUE}
+# Add a column for clinics per thousand sq. miles
+mainland.veterans.clinics.count.new$CountSqMiles <- mainland.veterans.clinics.count.new$Count / (mainland.veterans.clinics.count.new$SqMiles / 1000)
+head(mainland.veterans.clinics.count.new)
+```
+$~$
+
+**(d) Create another ggplot which considers the VAs per square thousand miles, rather than just frequency.**
+
+* Make sure the State axis is readable, like before. Change the title and axes as appropriate.
+* Modify the ggplot syntax to make your bars in descending order (there are StackOverflow topics for this, and I have demonstrated how in Live Coding in prior classes).
+* Color-code the bars based on Region (see the merged data.frame)-however, change the color scheme from the default. Any set of colors is fine, so long as it is readable.
+* Keep the legend-you should have four regions and therefore four colors.
+
+```{r echo=TRUE, fig.width=10, fig.height=6}
+# ggplot of veterans clinics by state
+ggplot(mainland.veterans.clinics.count.new, aes(reorder(StateName, -CountSqMiles), CountSqMiles, fill=Region)) +  
+  geom_bar(stat="identity") + theme_gray() + theme(legend.position="bottom") + theme(plot.title = element_text(color="black", size=14, face="bold", hjust = 0.5), axis.title.x = element_text(color="black", size=14, face="bold", hjust = 0.5), axis.title.y = element_text(color="black", size=14, face="bold"), axis.text.x=element_text(angle=90, hjust=0.95, vjust=0.2)) + labs(title ="Veterans Clinics per 1000 Sq Miles by State", x = "State", y = "Veterans Clinics Per 1000 Sq Miles")
+```
+$~$
+
+**(e) What patterns do you see? By this metric, is there any region that seems relatively high for VA medical centers per thousand square miles? How about low? Given these data, what advice might you give your boss before you start modeling (and why)?**
+
+Some of the patterns that are noticeable in the bar chart are:
+
+* The count of the veterans clinics per 1000 sq. miles for the top two states seems to be almost 10-15 times more than the mean count of the veteran clinics per 1000 sq. miles for all states.
+
+* The Northeast region of the United States seem to have a higher count of verterans clinics per 1000 sq. miles. The reason may be the veterans population might be higher in these areas. The highest concentration of clinics are in Rhode Island, New Jersey and Massachusetts.
+
+* The West region of the United States seem to have the least count of veterans clinics per 1000 sq. miles. These include Utah, Wyoming and Montana.
+
+* The goal of the project is to build new veterans clinics so that our veterans receive the proper health care they deserve. I would recommend to further analyze the population concentration of the veterans and compare that against the veterans clinics per 1000 sq. miles data. We can plan to build new clinics in the areas where there is less number of clinics for the veterans population in that area.

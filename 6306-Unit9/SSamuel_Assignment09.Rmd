@@ -188,3 +188,16 @@ ggplot(san.antonio.spurs.shooting, aes(Name, `FG%`, fill=Position)) +
   geom_bar(stat="identity") + theme_classic() + coord_flip() +
   labs(title ="Field Goals % Statistics by Player", x = "Player Name", y = "Field Goal %")
 ```
+
+
+**TQ**
+
+url <- 'https://www.imdb.com/title/tt1201607/fullcredits?ref_=tt_ql_1'
+library(RCurl)
+library(XML)
+character_tables <- readHTMLTable(url)
+tabs = getURL(url)
+cast <- readHTMLTable(tabs, stringsAsFactors = F, which = 3)
+colnames(cast) <- c("","Actor","","Character")
+cast <- cast[,-c(1,3)]
+
